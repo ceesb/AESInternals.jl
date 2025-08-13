@@ -14,3 +14,9 @@ include("aes-tests.jl")
     testaes256()
     testaes256leakages()
 end
+
+include("bias-tests.jl")
+
+@testset "aes bias tests" begin
+    test_aes256()
+end

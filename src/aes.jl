@@ -297,6 +297,10 @@ function set_leakage!(leakages, round, symbol, state)
     println("round $(lpad(round, 2)) $(lpad(symbol, 6)):   $(string(state |> hton, base = 16, pad = 32))")
 end
 
+function AESInternals.set_leakage!(leakages::Dict, round::Int, stage::Symbol, state::UInt128)
+    leakages[(round, stage)] = state
+end
+
 function all_encrypt_leakages(keylength)
     if keylength == 16
         Nr = 10

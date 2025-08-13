@@ -97,11 +97,7 @@ function testaes256()
     
     output = aes_encrypt(input, expandkey(key), nothing, Val(0))
 
-    @test reinterpret(UInt128, expectedoutput)[1] == output
-end
-
-function AESInternals.set_leakage!(leakages::Dict, round::Int, stage::Symbol, state::UInt128)
-    leakages[(round, stage)] = state
+    @test expectedoutput == output
 end
 
 function testaes256leakages()
