@@ -397,7 +397,7 @@ end
     return Expr(:block, stages...)
 end
 
-@inline function aes_encrypt(keylength, input::Vector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
+@inline function aes_encrypt(keylength, input::AbstractVector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
     o = aes_encrypt(keylength, reinterpret(UInt128, input)[1], expandedkey, leakages, leakdefs)
     return reinterpret(UInt8, [o])
 end
