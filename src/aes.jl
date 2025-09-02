@@ -411,7 +411,7 @@ export aes_encrypt
     elseif length(expandedkey) == 11
         keylength = 16
     else
-        error("unsupported key length $(keylength)")
+        error("unsupported key length $(length(expandedkey))")
     end
    aes_encrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
 end
