@@ -416,7 +416,7 @@ export aes_encrypt
    aes_encrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
 end
 
-function dump_aes_encrypt(input::Vector{UInt8}, key::Vector{UInt8})
+function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_encrypt(input, ex, nothing, Val(
         tuple(
