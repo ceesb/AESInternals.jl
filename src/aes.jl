@@ -100,7 +100,7 @@ end
 
 const isbox_table = itable(sbox_table)
 
-@inline function mix_column(col::UInt32)::UInt32
+@inline function mixcolumn(col::UInt32)::UInt32
     a3 = UInt8((col >> 24) & 0xff)
     a2 = UInt8((col >> 16) & 0xff)
     a1 = UInt8((col >> 8) & 0xff)
@@ -114,7 +114,7 @@ const isbox_table = itable(sbox_table)
     return (UInt32(b3) << 24) | (UInt32(b2) << 16) | (UInt32(b1) << 8) | UInt32(b0)
 end
 
-@inline function imix_column(col::UInt32)::UInt32
+@inline function imixcolumn(col::UInt32)::UInt32
     a3 = UInt8((col >> 24) & 0xff)
     a2 = UInt8((col >> 16) & 0xff)
     a1 = UInt8((col >> 8) & 0xff)
@@ -163,7 +163,7 @@ function mixcolumns(state::UInt128)::UInt128
         # Extract 4 bytes making up column i (in column-major order)
         shift = 8 * (12 - 4i)
         col = UInt32((state >> shift) & 0xffffffff)
-        mixed = mix_column(col)
+        mixed = mixcolumn(col)
         result |= UInt128(mixed) << shift
     end
     return result
@@ -176,7 +176,7 @@ function imixcolumns(state::UInt128)::UInt128
         # Extract 4 bytes making up column i (in column-major order)
         shift = 8 * (12 - 4i)
         col = UInt32((state >> shift) & 0xffffffff)
-        mixed = imix_column(col)
+        mixed = imixcolumn(col)
         result |= UInt128(mixed) << shift
     end
     return result
