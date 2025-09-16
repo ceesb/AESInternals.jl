@@ -3,6 +3,9 @@ uuid = "23d80bc3-1b68-464f-aa9a-274c2b418af4"
 authors = ["Cees-Bart Breunesse <ceeesb@gmail.com>"]
 version = "0.1.0"
 
+[compat]
+julia = "1.11"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
