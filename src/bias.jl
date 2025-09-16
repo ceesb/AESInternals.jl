@@ -1,6 +1,7 @@
 const fullround = [:s_box, :s_row, :m_col, :addroundkey]
 const lastround = [:s_box, :s_row, :addroundkey]
 
+export aes256_hammer
 function aes256_hammer(;
     state1 = zero(UInt128),
     state2 = zero(UInt128),
@@ -26,6 +27,7 @@ function aes256_hammer(;
     return input, key
 end
 
+export aes256_hammer!
 function aes256_hammer!(
     input::Vector{UInt8},
     key::Vector{UInt8};

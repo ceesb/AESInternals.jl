@@ -416,21 +416,14 @@ export aes_encrypt
    aes_encrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
 end
 
+function aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
+    ex = expandkey(key)
+    aes_encrypt(input, ex)
+end
+
 function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_encrypt(input, ex, nothing, Val(
         tuple(
             all_encrypt_leakages(length(key))...)))
 end
-
-# export aes128_encrypt
-# @inline aes128_encrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0)) =
-#     aes_encrypt(Val(16), input, expandedkey, leakages, leakdefs)
-
-# export aes192_encrypt
-# @inline aes192_encrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0)) =
-#     aes_encrypt(Val(24), input, expandedkey, leakages, leakdefs)
-
-# export aes256_encrypt
-# @inline aes256_encrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0)) =
-#     aes_encrypt(Val(32), input, expandedkey, leakages, leakdefs)

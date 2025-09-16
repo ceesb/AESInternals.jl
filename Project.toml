@@ -1,6 +1,6 @@
 name = "AESInternals"
 uuid = "23d80bc3-1b68-464f-aa9a-274c2b418af4"
-authors = ["Cees-Bart Breunesse <ceesb@keysight.com>"]
+authors = ["Cees-Bart Breunesse <ceeesb@gmail.com>"]
 version = "0.1.0"
 
 [extras]
