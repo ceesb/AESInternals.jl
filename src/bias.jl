@@ -29,8 +29,8 @@ end
 
 export aes256_hammer!
 function aes256_hammer!(
-    input::Vector{UInt8},
-    key::Vector{UInt8};
+    input::AbstractArray{UInt8},
+    key::AbstractArray{UInt8};
     state1 = zero(UInt128),
     state2 = zero(UInt128),
     round1 = 4, 
@@ -84,6 +84,66 @@ function aes256_hammer!(
     input128[1] = state
     key128[1] = expandedkey[1]
     key128[2] = expandedkey[2]
+
+    return nothing
+end
+
+export aes256_smallhammer
+function aes256_smallhammer(key::AbstractArray{UInt8};
+    state = zero(UInt128),
+    round = 4, 
+    operation = :start,
+    )
+
+    length(key) == 32 || error("length key is $(length(key)) but needs to be 32")
+
+    input = zeros(UInt8, 16)
+    aes256_smallhammer!(
+        input,
+        key;
+        state = state,
+        round = round,
+        operation = operation,
+    )
+
+    return input
+end
+
+
+export aes256_smallhammer!
+function aes256_smallhammer!(
+    input::AbstractArray{UInt8},
+    key::AbstractArray{UInt8};
+    state = zero(UInt128),
+    round = 4, 
+    operation = :start)
+
+    input128 = reinterpret(UInt128, input)
+
+    if operation == :start
+        rx_start = state
+    elseif operation == :s_box
+        rx_start = isbox(state)
+    elseif operation == :m_col
+        rx_start = isbox(ishiftrows(imixcolumns(state)))
+    else
+        error("unknown operation $operation, can be either :start, :s_box, or :m_col")
+    end
+
+    expandedkey = expandkey(key)
+
+    state = rx_start
+
+    for r in round - 1 : - 1 : 1
+        state ⊻= expandedkey[r + 1]
+        state = imixcolumns(state)
+        state = ishiftrows(state)
+        state = isbox(state)
+    end
+
+    state ⊻= expandedkey[1]
+
+    input128[1] = state
 
     return nothing
 end
