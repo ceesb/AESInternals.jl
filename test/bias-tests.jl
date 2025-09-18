@@ -6,7 +6,7 @@ function AESInternals.set_leakage!(leakages, round, symbol, state)
     println("round $(lpad(round, 2)) $(lpad(symbol, 6)):   $(string(state |> hton, base = 16, pad = 32))")
 end
 
-function test_aes256()
+function test_aes256_hammer()
     for round in 1:12
         for operation1 in (:start,:s_box, :m_col)
             for operation2 in (:start, :s_box, :m_col)
@@ -33,6 +33,29 @@ function test_aes256()
                 @test leakages[leakdefs[1]] == state1
                 @test leakages[leakdefs[2]] == state2
             end
+        end
+    end
+end
+
+function test_aes256_smallhammer()
+    for round in 1:12
+        for operation in (:start,:s_box, :m_col)
+
+            leakages = Dict()
+            @show leakdefs = ((round, operation),)
+
+            key = rand(UInt8, 32)
+            state = (rand(UInt128) << 32) | 0xdeadcee5
+
+            input = AESInternals.aes256_smallhammer(key;
+                state = state, 
+                round = round,
+                operation = operation)
+
+                aes_encrypt(input, expandkey(key), leakages, Val(leakdefs))
+                # AESInternals.dump_aes_encrypt(input, key)
+
+            @test leakages[leakdefs[1]] == state
         end
     end
 end
