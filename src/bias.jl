@@ -47,6 +47,8 @@ function aes256_hammer!(
         rx_start = state1
     elseif operation1 == :s_box
         rx_start = isbox(state1)
+    elseif operation1 == :s_row
+        rx_start = isbox(ishiftrows(state1))
     elseif operation1 == :m_col
         rx_start = isbox(ishiftrows(imixcolumns(state1)))
     else
@@ -124,6 +126,8 @@ function aes256_smallhammer!(
         rx_start = state
     elseif operation == :s_box
         rx_start = isbox(state)
+    elseif operation == :s_row
+        rx_start = isbox(ishiftrows(state))
     elseif operation == :m_col
         rx_start = isbox(ishiftrows(imixcolumns(state)))
     else

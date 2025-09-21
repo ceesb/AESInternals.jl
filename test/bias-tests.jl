@@ -8,7 +8,7 @@ end
 
 function test_aes256_hammer()
     for round in 1:12
-        for operation1 in (:start,:s_box, :m_col)
+        for operation1 in (:start,:s_box, :s_row, :m_col)
             for operation2 in (:start, :s_box, :m_col)
 
                 leakages = Dict()
@@ -39,7 +39,7 @@ end
 
 function test_aes256_smallhammer()
     for round in 1:12
-        for operation in (:start,:s_box, :m_col)
+        for operation in (:start,:s_box, :s_row, :m_col)
 
             leakages = Dict()
             @show leakdefs = ((round, operation),)

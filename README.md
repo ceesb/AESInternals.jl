@@ -49,7 +49,8 @@ One day when I need it, I'll add decrypt.
 
 ## Biases
 
-To generate key and inputs pairs for AES 256 encrypt that cause an internal bias, use `aes256_hammer`. For example, the following generates key and input pairs for which rounds 8 and 9 start are full-zero.
+To generate key and inputs pairs for AES 256 encrypt that cause an internal bias, use `aes256_hammer` or `aes256_smallhammer`. Function `aes256_hammer` generates key and input pairs for which 2 subsequent rounds can be biased. Function `aes256_smallhammer` generates inputs given a fixed key that can bias a single round.
+
 
 ```julia
 input, key = aes256_hammer(;
@@ -122,5 +123,4 @@ round 14  start:   4b33953998a6b794a8fcfb2ef5e90a42
 round 14  s_box:   b3c32a124624a922c2b00f31e61e672c
 round 14  s_row:   b3240f2c46b06712c21e2a22e6c3a931
 round 14 output:   cf997095d22a2cbbc96e0a7466f7de14
-
 ```
