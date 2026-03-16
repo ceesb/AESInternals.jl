@@ -49,7 +49,7 @@ One day when I need it, I'll add decrypt.
 
 ## Biases
 
-To generate key and inputs pairs for AES 256 encrypt that cause an internal bias, use `aes256_hammer` or `aes256_smallhammer`. Function `aes256_hammer` generates key and input pairs for which 2 subsequent rounds can be biased. Function `aes256_smallhammer` generates inputs given a fixed key that can bias a single round.
+To generate key and inputs pairs for AES encrypt that cause an internal bias, use `aes256_hammer` or `aes_smallhammer`. Function `aes256_hammer` generates key and input pairs for which 2 subsequent rounds can be biased. Function `aes_smallhammer` generates inputs given a fixed key that can bias a single round. Small hammers are supported for AES key lengths 32/24/16.
 
 
 ```julia

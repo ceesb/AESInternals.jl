@@ -39,6 +39,8 @@ function aes256_hammer!(
     operation2 = :start)
 
     round2 == round1 + 1 || error("fixme")
+    length(input) == 16 || error("input is not 16 bytes")
+    length(key) == 32 || error("key is not 32 bytes")
 
     input128 = reinterpret(UInt128, input)
     key128 = reinterpret(UInt128, key)
@@ -90,17 +92,15 @@ function aes256_hammer!(
     return nothing
 end
 
-export aes256_smallhammer
-function aes256_smallhammer(key::AbstractArray{UInt8};
+export aes_smallhammer
+function aes_smallhammer(key::AbstractArray{UInt8};
     state = zero(UInt128),
     round = 4, 
     operation = :start,
     )
 
-    length(key) == 32 || error("length key is $(length(key)) but needs to be 32")
-
     input = zeros(UInt8, 16)
-    aes256_smallhammer!(
+    aes_smallhammer!(
         input,
         key;
         state = state,
@@ -112,23 +112,36 @@ function aes256_smallhammer(key::AbstractArray{UInt8};
 end
 
 
-export aes256_smallhammer!
-function aes256_smallhammer!(
+export aes_smallhammer!
+function aes_smallhammer!(
     input::AbstractArray{UInt8},
     key::AbstractArray{UInt8};
     state = zero(UInt128),
     round = 4, 
     operation = :start)
 
-    input128 = reinterpret(UInt128, input)
+    length(input) == 16 ||
+        error("input is not 16 bytes")
+    length(key) == 32 || length(key) == 24 || length(key) == 16 || 
+        error("length key is $(length(key)) but needs to be 32/24/16")
 
-    if operation == :start
+    input128 = reinterpret(UInt128, input)
+    kl = length(key)
+    if kl == 16
+        lr = 10
+    elseif kl == 24
+        lr = 12
+    else
+        lr = 14
+    end
+
+    if operation == :start && 1 <= round <= lr
         rx_start = state
-    elseif operation == :s_box
+    elseif operation == :s_box  && 1 <= round <= lr
         rx_start = isbox(state)
-    elseif operation == :s_row
+    elseif operation == :s_row && 1 <= round <= lr
         rx_start = isbox(ishiftrows(state))
-    elseif operation == :m_col
+    elseif operation == :m_col && 1 <= round <= (lr-1)
         rx_start = isbox(ishiftrows(imixcolumns(state)))
     else
         error("unknown operation $operation, can be either :start, :s_box, or :m_col")

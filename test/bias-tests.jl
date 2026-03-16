@@ -37,25 +37,63 @@ function test_aes256_hammer()
     end
 end
 
-function test_aes256_smallhammer()
-    for round in 1:12
-        for operation in (:start,:s_box, :s_row, :m_col)
+function test_aes_smallhammer()
+    for kl in [32,24,16]
+        if kl == 32
+            lr = 14
+        elseif kl == 24
+            lr = 12
+        else
+            lr = 10
+        end
 
-            leakages = Dict()
-            @show leakdefs = ((round, operation),)
+        for round in 1:lr
+            for operation in (:start,:s_box, :s_row, :m_col)
+                if operation == :m_col && round == lr
+                    continue
+                end
 
-            key = rand(UInt8, 32)
-            state = (rand(UInt128) << 32) | 0xdeadcee5
+                leakages = Dict()
+                @show leakdefs = ((round, operation),)
 
-            input = AESInternals.aes256_smallhammer(key;
-                state = state, 
-                round = round,
-                operation = operation)
+                key = rand(UInt8, kl)
+                state = (rand(UInt128) << 32) | 0xdeadcee5
+
+                input = AESInternals.aes_smallhammer(key;
+                    state = state, 
+                    round = round,
+                    operation = operation)
 
                 aes_encrypt(input, expandkey(key), leakages, Val(leakdefs))
                 # AESInternals.dump_aes_encrypt(input, key)
 
-            @test leakages[leakdefs[1]] == state
+                @test leakages[leakdefs[1]] == state
+            end
         end
+    end
+end
+
+function test_aes128_hammer()
+    for round in 1:10
+        for operation in (:start,:s_box, :s_row, :m_col)
+            if operation == :m_col && round == 10
+                continue
+            end
+            leakages = Dict()
+            @show leakdefs = ((round, operation),)
+
+            # state = rand(UInt128)
+            state = zero(UInt128) | 0xdead
+
+            input, key = AESInternals.aes128_hammer(
+                state = state, 
+                round = round,
+                operation = operation)
+
+            aes_encrypt(input, expandkey(key), leakages, Val(leakdefs))
+            # AESInternals.dump_aes_encrypt(input, key)
+
+            @test leakages[leakdefs[1]] == state
+        end    
     end
 end
