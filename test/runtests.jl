@@ -18,6 +18,6 @@ end
 include("bias-tests.jl")
 
 @testset "aes bias tests" begin
-    test_aes256_smallhammer()
+    test_aes_smallhammer()
     test_aes256_hammer()
 end
