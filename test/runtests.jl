@@ -12,7 +12,11 @@ include("aes-tests.jl")
     testkeyexpansion256backward()
 
     testaes256()
+    testaes256decrypt()
+    testaes256decryptwithkey()
+    testaes256roundtrip()
     testaes256leakages()
+    testaes256decryptleakages()
 end
 
 include("bias-tests.jl")

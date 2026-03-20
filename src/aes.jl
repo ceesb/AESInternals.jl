@@ -336,6 +336,41 @@ function all_encrypt_leakages(keylength)
     return l
 end
 
+function all_decrypt_leakages(keylength)
+    if keylength == 16
+        Nr = 10
+        Nk = 4
+    elseif keylength == 24
+        Nr = 12
+        Nk = 6
+    elseif keylength == 32
+        Nr = 14
+        Nk = 8
+    else
+        error("unsupported key length $(keylength)")
+    end
+
+    l = Set{Tuple{Int, Symbol}}()
+
+    for r in 0:Nr
+        if r == 0
+            push!(l, (r, :input))
+        elseif r == Nr
+            push!(l, (r, :start))
+            push!(l, (r, :s_row))
+            push!(l, (r, :s_box))
+            push!(l, (r, :output))
+        else
+            push!(l, (r, :start))
+            push!(l, (r, :s_row))
+            push!(l, (r, :s_box))
+            push!(l, (r, :m_col))
+        end
+    end
+
+    return l
+end
+
 @generated function aes_encrypt(
         ::Val{keylength}, 
         input::UInt128, 
@@ -397,8 +432,71 @@ end
     return Expr(:block, stages...)
 end
 
+@generated function aes_decrypt(
+        ::Val{keylength},
+        input::UInt128,
+        expandedkey::Vector{UInt128},
+        leakages, ::Val{LEAKS}) where {keylength, LEAKS}
+    if keylength == 16
+        Nr = 10
+        Nk = 4
+    elseif keylength == 24
+        Nr = 12
+        Nk = 6
+    elseif keylength == 32
+        Nr = 14
+        Nk = 8
+    else
+        error("unsupported key length $(keylength)")
+    end
+
+    stages = Expr[:(state = input ⊻ expandedkey[$(Nr + 1)])]
+
+    if (0, :input) in LEAKS
+        push!(stages, :(set_leakage!(leakages, $0, :input, input)))
+    end
+
+    for round = 1:Nr
+        if (round, :start) in LEAKS
+            push!(stages, :(set_leakage!(leakages, $round, :start, state)))
+        end
+
+        push!(stages, :(state = ishiftrows(state)))
+        if (round, :s_row) in LEAKS
+            push!(stages, :(set_leakage!(leakages, $round, :s_row, state)))
+        end
+
+        push!(stages, :(state = isbox(state)))
+        if (round, :s_box) in LEAKS
+            push!(stages, :(set_leakage!(leakages, $round, :s_box, state)))
+        end
+
+        if round < Nr
+            push!(stages, :(state ⊻= expandedkey[$(Nr + 1 - round)]))
+            push!(stages, :(state = imixcolumns(state)))
+            if (round, :m_col) in LEAKS
+                push!(stages, :(set_leakage!(leakages, $round, :m_col, state)))
+            end
+        else
+            push!(stages, :(state ⊻= expandedkey[1]))
+        end
+    end
+
+    if (Nr, :output) in LEAKS
+        push!(stages, :(set_leakage!(leakages, $Nr, :output, state)))
+    end
+
+    push!(stages, :(return state))
+    return Expr(:block, stages...)
+end
+
 @inline function aes_encrypt(keylength, input::AbstractVector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
     o = aes_encrypt(keylength, reinterpret(UInt128, input)[1], expandedkey, leakages, leakdefs)
+    return reinterpret(UInt8, [o])
+end
+
+@inline function aes_decrypt(keylength, input::AbstractVector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
+    o = aes_decrypt(keylength, reinterpret(UInt128, input)[1], expandedkey, leakages, leakdefs)
     return reinterpret(UInt8, [o])
 end
 
@@ -416,9 +514,28 @@ export aes_encrypt
    aes_encrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
 end
 
+export aes_decrypt
+@inline function aes_decrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0))
+    if length(expandedkey) == 15
+        keylength = 32
+    elseif length(expandedkey) == 13
+        keylength = 24
+    elseif length(expandedkey) == 11
+        keylength = 16
+    else
+        error("unsupported key length $(length(expandedkey))")
+    end
+   aes_decrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
+end
+
 function aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_encrypt(input, ex)
+end
+
+function aes_decrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
+    ex = expandkey(key)
+    aes_decrypt(input, ex)
 end
 
 function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
@@ -426,4 +543,11 @@ function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt
     aes_encrypt(input, ex, nothing, Val(
         tuple(
             all_encrypt_leakages(length(key))...)))
+end
+
+function dump_aes_decrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
+    ex = expandkey(key)
+    aes_decrypt(input, ex, nothing, Val(
+        tuple(
+            all_decrypt_leakages(length(key))...)))
 end

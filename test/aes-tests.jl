@@ -100,6 +100,34 @@ function testaes256()
     @test expectedoutput == output
 end
 
+function testaes256decrypt()
+    ciphertext = "c48bce6977a67ee4570dd8e279ea2cbe" |> hex2bytes
+    key = "50d80483b3c6c51470f17c4694756104112233445566778899aabbccddeeff00" |> hex2bytes
+    expectedoutput = "00112233445566778899aabbccddeeff" |> hex2bytes
+
+    output = aes_decrypt(ciphertext, expandkey(key), nothing, Val(0))
+
+    @test expectedoutput == output
+end
+
+function testaes256decryptwithkey()
+    ciphertext = "c48bce6977a67ee4570dd8e279ea2cbe" |> hex2bytes
+    key = "50d80483b3c6c51470f17c4694756104112233445566778899aabbccddeeff00" |> hex2bytes
+    expectedoutput = "00112233445566778899aabbccddeeff" |> hex2bytes
+
+    @test aes_decrypt(ciphertext, key) == expectedoutput
+end
+
+function testaes256roundtrip()
+    input = "00112233445566778899aabbccddeeff" |> hex2bytes
+    key = "50d80483b3c6c51470f17c4694756104112233445566778899aabbccddeeff00" |> hex2bytes
+    expandedkey = expandkey(key)
+
+    ciphertext = aes_encrypt(input, expandedkey)
+
+    @test aes_decrypt(ciphertext, expandedkey) == input
+end
+
 function testaes256leakages()
     input = "00112233445566778899aabbccddeeff" |> hex2bytes
     key = "50d80483b3c6c51470f17c4694756104112233445566778899aabbccddeeff00" |> hex2bytes
@@ -117,6 +145,29 @@ function testaes256leakages()
     aes_encrypt(input, expandkey(key), leakages, Val{leaktuples}())
 
     for (k,v) in leakages
+        @test !iszero(v)
+    end
+
+    @test leakages[(14, :output)] == reinterpret(UInt128, expectedoutput)[1]
+end
+
+function testaes256decryptleakages()
+    ciphertext = "c48bce6977a67ee4570dd8e279ea2cbe" |> hex2bytes
+    key = "50d80483b3c6c51470f17c4694756104112233445566778899aabbccddeeff00" |> hex2bytes
+    expectedoutput = "00112233445566778899aabbccddeeff" |> hex2bytes
+
+    leakages = Dict(
+        (1, :s_row) => UInt128(0),
+        (3, :m_col) => UInt128(0),
+        (14, :output) => UInt128(0),
+    )
+
+    leakkeys = keys(leakages) |> collect
+    leaktuples = ntuple(i -> leakkeys[i], length(leakkeys))
+
+    aes_decrypt(ciphertext, expandkey(key), leakages, Val{leaktuples}())
+
+    for (k, v) in leakages
         @test !iszero(v)
     end
 

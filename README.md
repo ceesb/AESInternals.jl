@@ -4,7 +4,7 @@ Exposes internals of the AES cipher.
 
 ## Examples
 
-AES 256/192/128 encrypt:
+AES 256/192/128 encrypt/decrypt:
 ```julia
 aes_encrypt(rand(UInt8, 16), rand(UInt8, 32))
 aes_encrypt(rand(UInt8, 16), rand(UInt8, 24))
@@ -44,8 +44,6 @@ Inverse mix-columns:
 ```julia
 imixcolumns(rand(UInt128))
 ```
-
-One day when I need it, I'll add decrypt.
 
 ## Biases
 
