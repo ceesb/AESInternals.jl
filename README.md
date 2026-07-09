@@ -1,3 +1,5 @@
+[![](https://img.shields.io/badge/docs-green.svg)](https://ceesb.github.io/AESInternals.jl/)
+
 # AESInternals
 
 Exposes internals of the AES cipher.

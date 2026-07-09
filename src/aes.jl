@@ -2,6 +2,7 @@ const aes_poly = 0x1b
 const aes_affine = 0b11110001_11100011_11000111_10001111_00011111_00111110_01111100_11111000
 const aes_constant = 0x63
 
+"""Multiply two bytes in GF(2^8) with the AES primitive polynomial."""
 function gf_mult(a::UInt8, b::UInt8; primitive_polynomial = aes_poly)::UInt8
     result = UInt8(0)
     for _ in 1:8
@@ -18,6 +19,7 @@ function gf_mult(a::UInt8, b::UInt8; primitive_polynomial = aes_poly)::UInt8
     return result
 end
 
+"""Build the GF(2^8) antilog table used by the AES field arithmetic."""
 function gen_gf8_antilog_table(;primitive_element = 0x3, primitive_polynomial = aes_poly)
     t = zeros(UInt8, 256)
     t[1] = 1
@@ -32,6 +34,7 @@ function gen_gf8_antilog_table(;primitive_element = 0x3, primitive_polynomial = 
     return t
 end
 
+"""Build the GF(2^8) log table from an antilog table."""
 function gen_gf8_log_table(alogtab)
     t = zeros(UInt8, 256)
 
@@ -45,6 +48,7 @@ function gen_gf8_log_table(alogtab)
 end
 
 
+"""Multiply two field elements using precomputed log and antilog tables."""
 function logtable_mul(a::UInt8, b::UInt8, logtab::Vector{UInt8}, alogtab::Vector{UInt8})::UInt8
     if a == 0x00 || b == 0x00
         return 0x00
@@ -69,9 +73,13 @@ end
 const alogtab = gen_gf8_antilog_table()
 const logtab = gen_gf8_log_table(alogtab)
 
+"""Multiply two AES field elements with the cached tables."""
 @inline gf8_mul(x, y) = logtable_mul(x, y, logtab, alogtab)
+
+"""Return the AES multiplicative inverse of a field element."""
 @inline gf8_inv(x) = iszero(x) ? zero(x) : alogtab[((logtab[x + 1] * 254) % 255) + 1]
 
+"""Multiply an 8x8 binary matrix by an 8-bit vector over GF(2)."""
 function gf2_matvec8(m::UInt64, v::UInt8)::UInt8
     result = 0x00
     for i in 0:7
@@ -82,12 +90,14 @@ function gf2_matvec8(m::UInt64, v::UInt8)::UInt8
     return result
 end
 
+"""Compute one AES S-box byte from a raw input byte."""
 function sbox(x::UInt8)
     gf2_matvec8(aes_affine, gf8_inv(x)) ⊻ aes_constant
 end
 
 const sbox_table = map(sbox, 0x00:0xff)
 
+"""Invert a lookup table."""
 function itable(table)
     invtable = similar(table)
 
@@ -100,6 +110,7 @@ end
 
 const isbox_table = itable(sbox_table)
 
+"""Apply the AES MixColumns transform to one 32-bit column."""
 @inline function mixcolumn(col::UInt32)::UInt32
     a3 = UInt8((col >> 24) & 0xff)
     a2 = UInt8((col >> 16) & 0xff)
@@ -114,6 +125,7 @@ const isbox_table = itable(sbox_table)
     return (UInt32(b3) << 24) | (UInt32(b2) << 16) | (UInt32(b1) << 8) | UInt32(b0)
 end
 
+"""Apply the AES inverse MixColumns transform to one 32-bit column."""
 @inline function imixcolumn(col::UInt32)::UInt32
     a3 = UInt8((col >> 24) & 0xff)
     a2 = UInt8((col >> 16) & 0xff)
@@ -128,7 +140,55 @@ end
     return (UInt32(b3) << 24) | (UInt32(b2) << 16) | (UInt32(b1) << 8) | UInt32(b0)
 end
 
+export makeT
+"""
+    makeT(idx)
+
+Build the four 256-byte lookup tables for a single AES input byte position.
+Each returned vector encodes one byte position of the MixColumns output for
+that input position.
+"""
+function makeT(idx)
+    ret1 = zeros(UInt8, 256)
+    ret2 = zeros(UInt8, 256)
+    ret3 = zeros(UInt8, 256)
+    ret4 = zeros(UInt8, 256)
+
+    for b in collect(UInt8, 0:255)
+        out = mixcolumn(UInt32(b) << ((idx - 1) * 8))
+        ret1[b + 1] = out & 0xff
+        ret2[b + 1] = (out >> 8) & 0xff
+        ret3[b + 1] = (out >> 16) & 0xff
+        ret4[b + 1] = (out >> 24) & 0xff
+    end
+
+    return ret1, ret2, ret3, ret4
+end
+
+export makeT
+"""
+    makeT()
+
+Build the full 4x4 table matrix used by AES lookup-table predictors.
+Each entry `T[r, c]` is a 256-byte lookup table that represents the
+contribution of row `r` of an AES input column to row `c` of the AES output
+column.
+"""
+function makeT()
+    gT11, gT21, gT31, gT41 = makeT(1)
+    gT12, gT22, gT32, gT42 = makeT(2)
+    gT13, gT23, gT33, gT43 = makeT(3)
+    gT14, gT24, gT34, gT44 = makeT(4)
+
+    # column i are the mc inputs for output i
+    T = [[gT11] [gT21] [gT31] [gT41];
+         [gT12] [gT22] [gT32] [gT42];
+         [gT13] [gT23] [gT33] [gT43];
+         [gT14] [gT24] [gT34] [gT44]]
+end
+
 export shiftrows
+"""Apply the AES ShiftRows transform to a 128-bit state."""
 function shiftrows(u::UInt128)::UInt128
     result = zero(UInt128)
 
@@ -143,6 +203,7 @@ function shiftrows(u::UInt128)::UInt128
 end
 
 export ishiftrows
+"""Apply the AES inverse ShiftRows transform to a 128-bit state."""
 function ishiftrows(u::UInt128)::UInt128
     result = zero(UInt128)
 
@@ -157,6 +218,7 @@ function ishiftrows(u::UInt128)::UInt128
 end
 
 export mixcolumns
+"""Apply MixColumns to each AES state column."""
 function mixcolumns(state::UInt128)::UInt128
     result = zero(UInt128)
     for i in 0:3
@@ -170,6 +232,7 @@ function mixcolumns(state::UInt128)::UInt128
 end
 
 export imixcolumns
+"""Apply inverse MixColumns to each AES state column."""
 function imixcolumns(state::UInt128)::UInt128
     result = zero(UInt128)
     for i in 0:3
@@ -182,6 +245,7 @@ function imixcolumns(state::UInt128)::UInt128
     return result
 end
 
+"""Apply the AES S-box to each byte of a 32-bit word."""
 function sbox(state::UInt32)::UInt32
     result = zero(UInt32)
     for i in 0 : 3
@@ -194,6 +258,7 @@ function sbox(state::UInt32)::UInt32
 end
 
 export sbox
+"""Apply the AES S-box to each byte of a 128-bit state."""
 function sbox(state::UInt128)::UInt128
     result = zero(UInt128)
     for i in 0 : 15
@@ -206,6 +271,7 @@ function sbox(state::UInt128)::UInt128
 end
 
 export isbox
+"""Apply the AES inverse S-box to each byte of a 128-bit state."""
 function isbox(state::UInt128)::UInt128
     result = zero(UInt128)
     for i in 0 : 15
@@ -217,13 +283,17 @@ function isbox(state::UInt128)::UInt128
     return result
 end
 
+"""Rotate a 32-bit AES word by one byte."""
 @inline rotword(x) = (x >> 8) | (x << 24)
+
+"""Return the AES round constant for key expansion step `i`."""
 @inline rcon(i) = alogtab[(logtab[0x02 + 1] * (i - 1)) % 255 + 1]
 
 const rcon_table = map(rcon, 1 : 16)
 const Nb = 4
 
 export expandkey!
+"""Expand an AES key into a preallocated buffer of round keys."""
 function expandkey!(expandedkey::AbstractVector, key::AbstractVector{UInt8}, offset = 0)
     if length(key) == 16
         Nr = 10
@@ -285,6 +355,7 @@ function expandkey!(expandedkey::AbstractVector, key::AbstractVector{UInt8}, off
 end
 
 export expandkey
+"""Expand an AES key into a fresh vector of round keys."""
 function expandkey(key::AbstractVector{UInt8}, offset = 0)
     n = length(key)
     Nr = div(n, 4) + 6
@@ -293,14 +364,17 @@ function expandkey(key::AbstractVector{UInt8}, offset = 0)
 end
 
 export set_leakage!
+"""Print a leakage state in a compact debug format."""
 function set_leakage!(leakages, round, symbol, state)
     println("round $(lpad(round, 2)) $(lpad(symbol, 6)):   $(string(state |> hton, base = 16, pad = 32))")
 end
 
+"""Record a leakage state in a dictionary keyed by round and stage."""
 function AESInternals.set_leakage!(leakages::Dict, round::Int, stage::Symbol, state::UInt128)
     leakages[(round, stage)] = state
 end
 
+"""Return the default leakage points for AES encryption at a given key length."""
 function all_encrypt_leakages(keylength)
     if keylength == 16
         Nr = 10
@@ -336,6 +410,7 @@ function all_encrypt_leakages(keylength)
     return l
 end
 
+"""Return the default leakage points for AES decryption at a given key length."""
 function all_decrypt_leakages(keylength)
     if keylength == 16
         Nr = 10
@@ -371,6 +446,7 @@ function all_decrypt_leakages(keylength)
     return l
 end
 
+"""Generate an AES encryption implementation for a fixed key length and leakage set."""
 @generated function aes_encrypt(
         ::Val{keylength}, 
         input::UInt128, 
@@ -432,6 +508,7 @@ end
     return Expr(:block, stages...)
 end
 
+"""Generate an AES decryption implementation for a fixed key length and leakage set."""
 @generated function aes_decrypt(
         ::Val{keylength},
         input::UInt128,
@@ -490,17 +567,20 @@ end
     return Expr(:block, stages...)
 end
 
+"""Encrypt a byte-vector input using a key-length tag and expanded key."""
 @inline function aes_encrypt(keylength, input::AbstractVector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
     o = aes_encrypt(keylength, reinterpret(UInt128, input)[1], expandedkey, leakages, leakdefs)
     return reinterpret(UInt8, [o])
 end
 
+"""Decrypt a byte-vector input using a key-length tag and expanded key."""
 @inline function aes_decrypt(keylength, input::AbstractVector{UInt8}, expandedkey::Vector{UInt128}, leakages, leakdefs)
     o = aes_decrypt(keylength, reinterpret(UInt128, input)[1], expandedkey, leakages, leakdefs)
     return reinterpret(UInt8, [o])
 end
 
 export aes_encrypt
+"""Encrypt an AES state using an expanded key and optional leakage targets."""
 @inline function aes_encrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0))
     if length(expandedkey) == 15
         keylength = 32
@@ -515,6 +595,7 @@ export aes_encrypt
 end
 
 export aes_decrypt
+"""Decrypt an AES state using an expanded key and optional leakage targets."""
 @inline function aes_decrypt(input, expandedkey, leakages = nothing, leakdefs = Val(0))
     if length(expandedkey) == 15
         keylength = 32
@@ -528,16 +609,19 @@ export aes_decrypt
    aes_decrypt(Val(keylength), input, expandedkey, leakages, leakdefs)
 end
 
+"""Encrypt a byte-vector input using a raw AES key."""
 function aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_encrypt(input, ex)
 end
 
+"""Decrypt a byte-vector input using a raw AES key."""
 function aes_decrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_decrypt(input, ex)
 end
 
+"""Run AES encryption while capturing the default encryption leakages."""
 function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_encrypt(input, ex, nothing, Val(
@@ -545,6 +629,7 @@ function dump_aes_encrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt
             all_encrypt_leakages(length(key))...)))
 end
 
+"""Run AES decryption while capturing the default decryption leakages."""
 function dump_aes_decrypt(input::AbstractVector{UInt8}, key::AbstractVector{UInt8})
     ex = expandkey(key)
     aes_decrypt(input, ex, nothing, Val(

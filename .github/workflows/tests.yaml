@@ -17,7 +17,7 @@ jobs:
       - name: Set up Julia
         uses: julia-actions/setup-julia@v2
         with:
-          version: '1.11'  # Adjust to the Julia version your package supports
+          version: '1'  # Latest stable Julia 1.x
 
       - name: Instantiate project
         run: julia --project -e 'using Pkg; Pkg.instantiate()'
